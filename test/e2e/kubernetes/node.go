@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ const (
 	hybridNodeWaitTimeout    = 10 * time.Minute
 	hybridNodeUpgradeTimeout = 2 * time.Minute
 	nodeCordonTimeout        = 30 * time.Second
+	instanceNameRegex        = `^EKSHybridCI-(\w+)-.*-(\w+)-(\w+)-([\w-]+)$`
 )
 
 // WaitForNode wait for the node to join the cluster and fetches the node info which has the nodeName label
@@ -31,10 +33,10 @@ func WaitForNode(ctx context.Context, k8s kubernetes.Interface, nodeName string,
 	labelSelector := constants.TestInstanceNameKubernetesLabel + "=" + nodeName
 	nodes, err := ik8s.ListAndWait(ctx, hybridNodeWaitTimeout, k8s.CoreV1().Nodes(), func(nodes *corev1.NodeList) bool {
 		if len(nodes.Items) == 0 {
-			logger.Info("Node with e2e label doesn't exist yet", "nodeName", nodeName)
+			logger.Info("Node with e2e label doesn't exist yet", "nodeName", nodeName, "labelSelector", labelSelector)
 			return false
 		}
-		logger.Info("Node with e2e label exists", "nodeName", nodeName)
+		logger.Info("Node with e2e label exists", "nodeName", nodeName, "labelSelector", labelSelector)
 		return true
 	}, func(opts *ik8s.ListOptions) {
 		opts.LabelSelector = labelSelector
@@ -47,6 +49,7 @@ func WaitForNode(ctx context.Context, k8s kubernetes.Interface, nodeName string,
 		return &nodes.Items[0], nil
 	}
 
+	logger.Info("Error getting node by e2e label", "error", err.Error())
 	// Node not found by label - try direct node name lookup
 	logger.Info("Node not found by e2e label, trying direct node name lookup ", "nodeName", nodeName)
 	node, err := ik8s.GetAndWait(ctx, hybridNodeWaitTimeout, k8s.CoreV1().Nodes(), nodeName, func(node *corev1.Node) bool {
@@ -171,7 +174,16 @@ func DeleteNode(ctx context.Context, k8s kubernetes.Interface, name string) erro
 	return nil
 }
 
-func EnsureNodeWithE2ELabelIsDeleted(ctx context.Context, k8s kubernetes.Interface, nodeName string) error {
+func EnsureNodeWithE2ELabelIsDeleted(ctx context.Context, k8s kubernetes.Interface, instanceName string) error {
+	re := regexp.MustCompile(instanceNameRegex)
+
+	matches := re.FindStringSubmatch(instanceName)
+	if matches == nil || len(matches) != 5 {
+		return fmt.Errorf("failed to parse test name: %s", instanceName)
+	}
+
+	nodeName := fmt.Sprintf("%s-node-%s-%s-%s", matches[1], matches[4], matches[2], matches[3])
+
 	node, err := getNodeByE2ELabelName(ctx, k8s, nodeName)
 	if err != nil {
 		return err
