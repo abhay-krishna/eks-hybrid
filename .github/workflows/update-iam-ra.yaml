@@ -20,7 +20,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-          ref: update-iam-ra
+          ref: main
       - name: Check for latest IAM-RA version
         run: |
           echo "Checking latest IAM-RA version"
