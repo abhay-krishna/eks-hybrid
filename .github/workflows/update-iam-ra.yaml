@@ -2,10 +2,16 @@
 # Posted by Игор Ташевски, modified by community. See post 'Timeline' for change history
 # Retrieved 2025-12-10, License - CC BY-SA 4.0
 
-name: Pull Request Action
+name: update-iam-ra
 on:
-  schedule:
-     - cron: "30 * * * *"
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**'
 
 jobs:
   create-pull-request:
