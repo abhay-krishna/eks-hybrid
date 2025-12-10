@@ -31,6 +31,8 @@ jobs:
           if [[ "$current_version" != "$latest_version" ]]; then
             echo $latest_version > IAM_RA_VERSION
           fi
+          git config --global user.email "arnchlm@amazon.com"
+          git config --global user.name "Abhay Krishna Arunachalam"
           git add IAM_RA_VERSION
           git commit -m "Update IAM RA version to latest"
         env:
