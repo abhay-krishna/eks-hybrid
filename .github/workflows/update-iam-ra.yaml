@@ -1,0 +1,38 @@
+# Source - https://stackoverflow.com/q
+# Posted by Игор Ташевски, modified by community. See post 'Timeline' for change history
+# Retrieved 2025-12-10, License - CC BY-SA 4.0
+
+name: Pull Request Action
+on:
+  schedule:
+     - cron: "30 * * * *"
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          ref: update-iam-ra
+      - name: Check for latest IAM-RA version
+        run: |
+          echo "Checking latest IAM-RA version"
+          current_version=$(cat IAM_RA_VERSION)
+          echo "Current version: $current_version"
+          latest_version=$(gh release list --exclude-pre-releases --exclude-drafts --repo aws/rolesanywhere-credential-helper --json tagName,isLatest --jq '.[] | select(.isLatest)|.tagName')
+          echo "Latest version: $latest_version"
+          if [[ "$current_version" != "$latest_version" ]]; then
+            echo $latest_version > IAM_RA_VERSION
+          fi
+          git add IAM_RA_VERSION
+          git commit -m "Update IAM RA version to latest"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Update IAM RA version to latest
+          title: 'Update IAM RA version to latest'
+          body: >
+            This PR updates the IAM RA version to latest
+          branch: update-iam-ra
